@@ -34,12 +34,8 @@ func Execute() {
 }
 
 // Re-export helpers for top-level commands (unread, latest, mentions, me, login).
-// These delegate to cmdutil so top-level .go files stay concise.
-
-var isJSON = cmdutil.IsJSON
-var printJSON = cmdutil.PrintJSON
-var truncateMsg = cmdutil.TruncateMsg
 var newClient = cmdutil.NewClient
+var truncateMsg = cmdutil.TruncateMsg
 
 func customHelp(cmd *cobra.Command, _ []string) {
 	if cmd == rootCmd {

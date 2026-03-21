@@ -115,8 +115,14 @@ type Post struct {
 	ChannelID string `json:"channel_id"`
 	UserID    string `json:"user_id"`
 	Message   string `json:"message"`
+	Type      string `json:"type"` // empty for user posts, "system_*" for system messages
 	CreateAt  int64  `json:"create_at"`
 	UpdateAt  int64  `json:"update_at"`
+}
+
+// IsSystem returns true if this is a system-generated post (join, leave, etc).
+func (p *Post) IsSystem() bool {
+	return p.Type != ""
 }
 
 // PostList is the API response for channel posts.

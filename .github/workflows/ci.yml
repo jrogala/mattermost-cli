@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run integration tests
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+        run: go test ./tests/ -count=1 -timeout 120s -v
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Determine next version
+        id: version
+        run: |
+          latest=$(git tag -l 'v*' --sort=-v:refname | head -1)
+          if [ -z "$latest" ]; then
+            next="v0.1.0"
+          else
+            # Increment patch version
+            major=$(echo "$latest" | cut -d. -f1)
+            minor=$(echo "$latest" | cut -d. -f2)
+            patch=$(echo "$latest" | cut -d. -f3)
+            next="${major}.${minor}.$((patch + 1))"
+          fi
+          echo "tag=$next" >> "$GITHUB_OUTPUT"
+          echo "Next version: $next"
+
+      - name: Build binaries
+        run: |
+          tag="${{ steps.version.outputs.tag }}"
+          mkdir -p dist
+          GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w" -o "dist/mattermost-cli-linux-amd64" .
+          GOOS=linux   GOARCH=arm64 go build -ldflags="-s -w" -o "dist/mattermost-cli-linux-arm64" .
+          GOOS=darwin  GOARCH=amd64 go build -ldflags="-s -w" -o "dist/mattermost-cli-darwin-amd64" .
+          GOOS=darwin  GOARCH=arm64 go build -ldflags="-s -w" -o "dist/mattermost-cli-darwin-arm64" .
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o "dist/mattermost-cli-windows-amd64.exe" .
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ steps.version.outputs.tag }}"
+          git tag "$tag"
+          git push origin "$tag"
+          gh release create "$tag" dist/* \
+            --title "$tag" \
+            --generate-notes

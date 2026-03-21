@@ -11,33 +11,3 @@ var Cmd = &cobra.Command{
 	Aliases: []string{"ch"},
 	Short:   "Manage channels: find, read, send",
 }
-
-func channelTypeName(t string) string {
-	switch t {
-	case "O":
-		return "public"
-	case "P":
-		return "private"
-	case "D":
-		return "dm"
-	case "G":
-		return "group"
-	default:
-		return t
-	}
-}
-
-func channelTypeCode(name string) string {
-	switch name {
-	case "public":
-		return "O"
-	case "private":
-		return "P"
-	case "dm":
-		return "D"
-	case "group":
-		return "G"
-	default:
-		return name
-	}
-}
