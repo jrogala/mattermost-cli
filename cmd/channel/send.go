@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/jrogala/mattermost-cli/internal/cmdutil"
+	"github.com/jrogala/mattermost-cli/pkg/ops"
 	"github.com/spf13/cobra"
 )
 
@@ -18,22 +19,21 @@ var sendCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		c := cmdutil.NewClient()
-		channelID, err := resolveChannelArg(c, args[0])
-		if err != nil {
-			return err
-		}
 		message := strings.Join(args[1:], " ")
 
-		post, err := c.SendPost(channelID, message)
+		channelID, err := ops.ResolveChannelArg(c, args[0])
 		if err != nil {
 			return err
 		}
 
-		if cmdutil.IsJSON(cmd) {
-			return cmdutil.PrintJSON(post)
+		result, err := ops.SendMessage(c, channelID, message)
+		if err != nil {
+			return err
 		}
 
-		fmt.Printf("Message sent to %s\n", post.ChannelID)
+		cmdutil.Render(cmd, result, func() {
+			fmt.Printf("Message sent to %s\n", result.ChannelID)
+		})
 		return nil
 	},
 }

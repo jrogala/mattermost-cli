@@ -5,14 +5,14 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/jrogala/mattermost-cli/client"
 	"github.com/jrogala/mattermost-cli/internal/cmdutil"
+	"github.com/jrogala/mattermost-cli/pkg/ops"
 	"github.com/spf13/cobra"
 )
 
 var (
-	listTeam        string
-	listType        string
+	listTeam         string
+	listType         string
 	listIncludeMuted bool
 )
 
@@ -29,69 +29,27 @@ var listCmd = &cobra.Command{
 	Short:   "List non-muted channels you belong to.",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		c := cmdutil.NewClient()
-
-		me, err := c.Me()
+		entries, err := ops.ListChannels(c, ops.ListOptions{
+			TeamID:       listTeam,
+			Type:         listType,
+			IncludeMuted: listIncludeMuted,
+		})
 		if err != nil {
 			return err
 		}
 
-		teamID, err := cmdutil.ResolveTeam(c, listTeam)
-		if err != nil {
-			return err
-		}
-
-		channels, err := c.GetChannels(teamID)
-		if err != nil {
-			return err
-		}
-
-		// Filter muted unless --include-muted
-		if !listIncludeMuted {
-			members, err := c.GetChannelMembers(teamID)
-			if err != nil {
-				return err
+		cmdutil.Render(cmd, entries, func() {
+			if len(entries) == 0 {
+				fmt.Println("No channels found.")
+				return
 			}
-			mutedSet := make(map[string]bool, len(members))
-			for _, m := range members {
-				if m.IsMuted() {
-					mutedSet[m.ChannelID] = true
-				}
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+			_, _ = fmt.Fprintln(w, "ID\tTYPE\tNAME")
+			for _, e := range entries {
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", e.ID, e.Type, e.DisplayName)
 			}
-			var filtered []client.Channel
-			for _, ch := range channels {
-				if !mutedSet[ch.ID] {
-					filtered = append(filtered, ch)
-				}
-			}
-			channels = filtered
-		}
-
-		if listType != "" {
-			typeCode := channelTypeCode(listType)
-			var filtered []client.Channel
-			for _, ch := range channels {
-				if ch.Type == typeCode {
-					filtered = append(filtered, ch)
-				}
-			}
-			channels = filtered
-		}
-
-		if cmdutil.IsJSON(cmd) {
-			return cmdutil.PrintJSON(channels)
-		}
-
-		if len(channels) == 0 {
-			fmt.Println("No channels found.")
-			return nil
-		}
-
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		_, _ = fmt.Fprintln(w, "ID\tTYPE\tNAME")
-		for _, ch := range channels {
-			name := cmdutil.ResolveChannelName(c, ch, me.ID)
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", ch.ID, channelTypeName(ch.Type), name)
-		}
-		return w.Flush()
+			_ = w.Flush()
+		})
+		return nil
 	},
 }

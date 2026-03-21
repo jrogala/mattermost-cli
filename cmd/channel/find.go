@@ -2,13 +2,11 @@ package channel
 
 import (
 	"fmt"
-	"strings"
+	"os"
 	"text/tabwriter"
 
-	"os"
-
-	"github.com/jrogala/mattermost-cli/client"
 	"github.com/jrogala/mattermost-cli/internal/cmdutil"
+	"github.com/jrogala/mattermost-cli/pkg/ops"
 	"github.com/spf13/cobra"
 )
 
@@ -27,91 +25,34 @@ var findCmd = &cobra.Command{
 		c := cmdutil.NewClient()
 		term := args[0]
 
-		// --type user: look up a user by username and return their DM channel
 		if findType == "user" {
-			u, err := c.GetUserByUsername(term)
-			if err != nil {
-				return fmt.Errorf("user %q not found: %w", term, err)
-			}
-			dm, err := c.GetOrCreateDM(u.ID)
+			result, err := ops.FindDMChannel(c, term)
 			if err != nil {
 				return err
 			}
-			if cmdutil.IsJSON(cmd) {
-				return cmdutil.PrintJSON(map[string]string{
-					"channel_id": dm.ID,
-					"username":   u.Username,
-					"type":       "dm",
-				})
-			}
-			fmt.Printf("%s\t%s (DM)\n", dm.ID, u.Username)
+			cmdutil.Render(cmd, result, func() {
+				fmt.Printf("%s\t%s (DM)\n", result.ChannelID, result.Username)
+			})
 			return nil
 		}
 
-		me, err := c.Me()
+		results, err := ops.FindChannels(c, term, findType)
 		if err != nil {
 			return err
 		}
 
-		teamID, err := cmdutil.ResolveTeam(c, "")
-		if err != nil {
-			return err
-		}
-
-		channels, err := c.GetChannels(teamID)
-		if err != nil {
-			return err
-		}
-
-		if findType != "" {
-			typeCode := channelTypeCode(findType)
-			var filtered []client.Channel
-			for _, ch := range channels {
-				if ch.Type == typeCode {
-					filtered = append(filtered, ch)
-				}
+		cmdutil.Render(cmd, results, func() {
+			if len(results) == 0 {
+				fmt.Printf("No channels matching %q\n", term)
+				return
 			}
-			channels = filtered
-		}
-
-		termLower := strings.ToLower(term)
-		var matches []client.Channel
-		for _, ch := range channels {
-			name := cmdutil.ResolveChannelName(c, ch, me.ID)
-			if strings.Contains(strings.ToLower(name), termLower) ||
-				strings.Contains(strings.ToLower(ch.Name), termLower) {
-				matches = append(matches, ch)
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+			_, _ = fmt.Fprintln(w, "ID\tTYPE\tNAME")
+			for _, r := range results {
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", r.ID, r.Type, r.Name)
 			}
-		}
-
-		if cmdutil.IsJSON(cmd) {
-			type result struct {
-				ID   string `json:"channel_id"`
-				Type string `json:"type"`
-				Name string `json:"name"`
-			}
-			var out []result
-			for _, ch := range matches {
-				out = append(out, result{
-					ID:   ch.ID,
-					Type: channelTypeName(ch.Type),
-					Name: cmdutil.ResolveChannelName(c, ch, me.ID),
-				})
-			}
-			return cmdutil.PrintJSON(out)
-		}
-
-		if len(matches) == 0 {
-			fmt.Printf("No channels matching %q\n", term)
-			return nil
-		}
-
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		_, _ = fmt.Fprintln(w, "ID\tTYPE\tNAME")
-		for _, ch := range matches {
-			name := cmdutil.ResolveChannelName(c, ch, me.ID)
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", ch.ID, channelTypeName(ch.Type), name)
-		}
-		return w.Flush()
+			_ = w.Flush()
+		})
+		return nil
 	},
 }
