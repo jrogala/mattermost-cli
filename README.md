@@ -42,17 +42,21 @@ mattermost login
 ## Examples
 
 ```bash
-# Check unread messages
-mattermost unread
+$ mattermost unread
+--- general ---
+  Mar 24 10:15  john   Meeting at 2pm in the conference room
+  Mar 24 10:10  sarah  Can anyone review the new design mockup?
+--- dev-team ---
+  Mar 24 14:22  alice  Deployed v1.2.3 to production
 
-# Read the last 20 messages from a channel
-mattermost channel read --channel town-square --limit 20
+$ mattermost channel list
+ID            TYPE     NAME
+5dkc57v8yj..  public   general
+6dkc57v8yj..  private  dev-team
+7dkc57v8yj..  dm       @john
 
-# Send a message to a channel
-mattermost channel send --channel dev-team "Deployment complete"
-
-# List recent mentions
-mattermost mentions
+$ mattermost channel send --channel dev-team "Deployment complete"
+Message sent to dev-team
 ```
 
 ## JSON Output
