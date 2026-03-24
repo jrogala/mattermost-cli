@@ -2,6 +2,14 @@
 
 CLI for Mattermost team chat interaction.
 
+## Install
+
+Download a binary from the [latest release](https://github.com/jrogala/mattermost-cli/releases/latest), or install with Go:
+
+```bash
+go install github.com/jrogala/mattermost-cli@latest
+```
+
 ## Setup
 
 Set env vars or use login command:
