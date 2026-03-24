@@ -42,21 +42,26 @@ mattermost login
 ## Examples
 
 ```bash
-$ mattermost unread
+$ mattermost-cli unread
+UNREAD  MENTIONS  CHANNEL
+5       2         general
+3       0         dev-team
+
+$ mattermost-cli latest
 --- general ---
   Mar 24 10:15  john   Meeting at 2pm in the conference room
   Mar 24 10:10  sarah  Can anyone review the new design mockup?
+
 --- dev-team ---
   Mar 24 14:22  alice  Deployed v1.2.3 to production
 
-$ mattermost channel list
-ID            TYPE     NAME
-5dkc57v8yj..  public   general
-6dkc57v8yj..  private  dev-team
-7dkc57v8yj..  dm       @john
+$ mattermost-cli channel list
+ID                          TYPE     NAME
+5dkc57v8yj9xrp2cmy000001   public   general
+6dkc57v8yj9xrp2cmy000002   private  dev-team
 
-$ mattermost channel send --channel dev-team "Deployment complete"
-Message sent to dev-team
+$ mattermost-cli channel send dev-team "Deployment complete"
+Message sent to 6dkc57v8yj9xrp2cmy000002
 ```
 
 ## JSON Output
