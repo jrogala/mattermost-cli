@@ -4,6 +4,7 @@ go 1.25.3
 
 require (
 	github.com/cucumber/godog v0.15.1
+	github.com/gorilla/websocket v1.5.3
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0

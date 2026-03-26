@@ -3,6 +3,7 @@ package client
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,6 +20,7 @@ type Client struct {
 	baseURL    string
 	token      string
 	httpClient *http.Client
+	tlsCfg     *tls.Config
 }
 
 // New creates a Client from the given config.
@@ -27,13 +29,15 @@ func New(cfg *config.Config) *Client {
 	if !strings.HasSuffix(baseURL, "/api/v4") {
 		baseURL += "/api/v4"
 	}
+	tc := tlsConfig(cfg.TLSSkipVerify)
 	return &Client{
 		baseURL: baseURL,
 		token:   cfg.Token,
+		tlsCfg:  tc,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 			Transport: &http.Transport{
-				TLSClientConfig: tlsConfig(cfg.TLSSkipVerify),
+				TLSClientConfig: tc,
 			},
 		},
 	}
