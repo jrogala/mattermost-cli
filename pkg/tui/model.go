@@ -1,0 +1,230 @@
+package tui
+
+import (
+	"context"
+	"fmt"
+	"io"
+
+	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/jrogala/mattermost-cli/client"
+	"github.com/jrogala/mattermost-cli/pkg/ops"
+)
+
+const (
+	paneSidebar = iota
+	paneMessages
+	paneInput
+)
+
+const (
+	sidebarModeChannels = iota
+	sidebarModeDMs
+)
+
+// channelItem implements list.Item for the sidebar.
+type channelItem struct {
+	channel ops.Channel
+}
+
+func (c channelItem) FilterValue() string { return c.channel.DisplayName }
+func (c channelItem) Title() string       { return c.channel.DisplayName }
+func (c channelItem) Description() string { return "" }
+
+// sectionItem is a non-selectable header in the list.
+type sectionItem struct{ title string }
+
+func (s sectionItem) FilterValue() string { return "" }
+func (s sectionItem) Title() string       { return s.title }
+func (s sectionItem) Description() string { return "" }
+
+// channelDelegate renders sidebar items with sections, muted state, unread badges.
+type channelDelegate struct{}
+
+func (d channelDelegate) Height() int                             { return 1 }
+func (d channelDelegate) Spacing() int                            { return 0 }
+func (d channelDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d channelDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
+	// Section header
+	if si, ok := item.(sectionItem); ok {
+		fmt.Fprint(w, sectionHeaderStyle.Render(si.title))
+		return
+	}
+
+	ci, ok := item.(channelItem)
+	if !ok {
+		return
+	}
+
+	ch := ci.channel
+	name := ch.DisplayName
+	maxW := sidebarWidth - 6
+	if len(name) > maxW {
+		name = name[:maxW-1] + "…"
+	}
+
+	// Badge: unread count
+	badge := ""
+	if ch.Unread > 0 {
+		badge = fmt.Sprintf(" [%d]", ch.Unread)
+	}
+
+	// Prefix: cursor or space
+	prefix := "  "
+	if index == m.Index() {
+		prefix = "▸ "
+	}
+
+	line := prefix + name + badge
+
+	switch {
+	case index == m.Index():
+		fmt.Fprint(w, channelSelectedStyle.Render(line))
+	case ch.Muted:
+		fmt.Fprint(w, channelMutedStyle.Render(line))
+	case ch.Unread > 0:
+		fmt.Fprint(w, channelUnreadStyle.Render(line))
+	default:
+		fmt.Fprint(w, channelStyle.Render(line))
+	}
+}
+
+// Model is the Bubble Tea model for the TUI.
+type Model struct {
+	client *client.Client
+	me     *ops.UserInfo
+	err    error
+
+	// Sidebar
+	channels []ops.Channel
+	list     list.Model
+
+	// Messages
+	messages    []ops.Message
+	viewport    viewport.Model
+	selectedMsg int
+	showDetail  bool
+	detailVP    viewport.Model
+
+	// Input
+	input textinput.Model
+
+	// WebSocket
+	wsEvents <-chan ops.Message
+	wsErrors <-chan error
+	wsCancel context.CancelFunc
+
+	// Layout
+	width        int
+	height       int
+	pane         int
+	sidebarMode  int
+	ready        bool
+	showHelp     bool
+	notification string
+}
+
+// tea.Msg types
+type channelsLoadedMsg struct{ channels []ops.Channel }
+type messagesLoadedMsg struct {
+	channelID string
+	messages  []ops.Message
+}
+type wsEventMsg struct{ msg ops.Message }
+type wsClosedMsg struct{}
+type messageSentMsg struct{}
+type debounceLoadMsg struct{ channelID string }
+type dismissNotificationMsg struct{}
+type errMsg struct{ err error }
+
+// New creates a new TUI model.
+func New(c *client.Client) Model {
+	ti := textinput.New()
+	ti.Placeholder = "type a message..."
+	ti.CharLimit = 4000
+
+	l := list.New(nil, channelDelegate{}, sidebarWidth, 10)
+	l.SetShowTitle(false)
+	l.SetShowStatusBar(false)
+	l.SetShowHelp(false)
+	l.SetFilteringEnabled(false)
+	l.DisableQuitKeybindings()
+
+	return Model{
+		client:   c,
+		input:    ti,
+		list:     l,
+		pane:     paneSidebar,
+		showHelp: true,
+	}
+}
+
+// Init starts loading channels and user info.
+func (m Model) Init() tea.Cmd {
+	return tea.Batch(
+		textinput.Blink,
+		loadChannels(m.client),
+		loadMe(m.client),
+	)
+}
+
+// selectedChannel returns the currently selected channel or nil.
+func (m Model) selectedChannel() *ops.Channel {
+	item := m.list.SelectedItem()
+	if item == nil {
+		return nil
+	}
+	ci, ok := item.(channelItem)
+	if !ok {
+		return nil
+	}
+	return &ci.channel
+}
+
+// selectedChannelID returns the current channel ID or empty.
+func (m Model) selectedChannelID() string {
+	if ch := m.selectedChannel(); ch != nil {
+		return ch.ID
+	}
+	return ""
+}
+
+// buildListItems creates the sidebar items with section headers.
+func buildListItems(channels []ops.Channel, mode int) []list.Item {
+	var items []list.Item
+
+	if mode == sidebarModeDMs {
+		var dmItems []list.Item
+		for _, ch := range channels {
+			if ch.Type == "dm" || ch.Type == "group" {
+				dmItems = append(dmItems, channelItem{ch})
+			}
+		}
+		items = append(items, sectionItem{"─ Direct Messages"})
+		items = append(items, dmItems...)
+		return items
+	}
+
+	var chItems, dmItems []list.Item
+	for _, ch := range channels {
+		item := channelItem{ch}
+		if ch.Type == "dm" || ch.Type == "group" {
+			if ch.Unread > 0 {
+				dmItems = append(dmItems, item)
+			}
+		} else {
+			chItems = append(chItems, item)
+		}
+	}
+	if len(chItems) > 0 {
+		items = append(items, sectionItem{"─ Channels"})
+		items = append(items, chItems...)
+	}
+	if len(dmItems) > 0 {
+		items = append(items, sectionItem{"─ Direct Messages"})
+		items = append(items, dmItems...)
+	}
+	return items
+}
