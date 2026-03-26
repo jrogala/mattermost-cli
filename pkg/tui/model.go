@@ -116,7 +116,10 @@ type Model struct {
 
 // tea.Msg types
 type channelsLoadedMsg struct{ channels []ops.Channel }
-type messagesLoadedMsg struct{ messages []ops.Message }
+type messagesLoadedMsg struct {
+	channelID string
+	messages  []ops.Message
+}
 type wsEventMsg struct{ msg ops.Message }
 type wsClosedMsg struct{}
 type messageSentMsg struct{}

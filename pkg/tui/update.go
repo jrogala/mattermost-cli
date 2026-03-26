@@ -52,6 +52,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case messagesLoadedMsg:
+		// Discard stale responses from fast channel switching
+		if msg.channelID != m.selectedChannelID() {
+			return m, nil
+		}
 		m.messages = msg.messages
 		if m.ready {
 			m.viewport.SetContent(m.renderMessages())

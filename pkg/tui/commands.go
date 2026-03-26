@@ -50,7 +50,7 @@ func loadMessages(c *client.Client, channelID string) tea.Cmd {
 		if err != nil {
 			return errMsg{err}
 		}
-		return messagesLoadedMsg{msgs}
+		return messagesLoadedMsg{channelID, msgs}
 	}
 }
 
