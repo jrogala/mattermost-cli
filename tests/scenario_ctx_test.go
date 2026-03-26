@@ -33,10 +33,10 @@ type scenarioCtx struct {
 	mentionList any
 
 	// WebSocket listen state
-	listenEvents   <-chan ops.ListenEvent
+	listenEvents   <-chan ops.Message
 	listenErrors   <-chan error
 	listenCancel   context.CancelFunc
-	receivedEvents []ops.ListenEvent
+	receivedEvents []ops.Message
 	lastPostID     string
 }
 

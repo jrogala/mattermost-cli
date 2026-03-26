@@ -107,8 +107,8 @@ func (sc *scenarioCtx) eventMessageShouldContain(text string) error {
 		return fmt.Errorf("no events received")
 	}
 	last := sc.receivedEvents[len(sc.receivedEvents)-1]
-	if !strings.Contains(last.Message, text) {
-		return fmt.Errorf("event message %q does not contain %q", last.Message, text)
+	if !strings.Contains(last.Text, text) {
+		return fmt.Errorf("event message %q does not contain %q", last.Text, text)
 	}
 	return nil
 }
@@ -118,8 +118,8 @@ func (sc *scenarioCtx) eventSenderShouldBe(username string) error {
 		return fmt.Errorf("no events received")
 	}
 	last := sc.receivedEvents[len(sc.receivedEvents)-1]
-	if last.Sender != username {
-		return fmt.Errorf("expected sender %q, got %q", username, last.Sender)
+	if last.User != username {
+		return fmt.Errorf("expected sender %q, got %q", username, last.User)
 	}
 	return nil
 }
@@ -163,7 +163,7 @@ func (sc *scenarioCtx) eventShouldHaveNonEmptyChannelID() error {
 	return nil
 }
 
-func receivedSummary(events []ops.ListenEvent) string {
+func receivedSummary(events []ops.Message) string {
 	if len(events) == 0 {
 		return "none"
 	}

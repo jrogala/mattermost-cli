@@ -81,18 +81,18 @@ var listenCmd = &cobra.Command{
 	},
 }
 
-func printEvent(evt ops.ListenEvent) {
+func printEvent(evt ops.Message) {
 	ts := evt.Time.Format("15:04:05")
 	ch := evt.Channel
-	if ch == "" {
+	if ch == "" && len(evt.ChannelID) >= 8 {
 		ch = evt.ChannelID[:8]
 	}
 
 	switch evt.Event {
 	case "posted", "post_edited":
-		fmt.Printf("[%s] %s | #%s | %s: %s\n", ts, evt.Event, ch, evt.Sender, truncateMsg(evt.Message, 120))
+		fmt.Printf("[%s] %s | #%s | %s: %s\n", ts, evt.Event, ch, evt.User, truncateMsg(evt.Text, 120))
 	case "typing":
-		fmt.Printf("[%s] typing | #%s | %s\n", ts, ch, evt.Sender)
+		fmt.Printf("[%s] typing | #%s | %s\n", ts, ch, evt.User)
 	default:
 		fmt.Printf("[%s] %s | #%s\n", ts, evt.Event, ch)
 	}

@@ -38,7 +38,7 @@ var mentionsCmd = &cobra.Command{
 			_, _ = fmt.Fprintln(w, "TIME\tCHANNEL\tFROM\tMESSAGE")
 			for _, m := range mentions {
 				ts := m.Time.Format("Jan 02 15:04")
-				msg := truncateMsg(m.Message, 150)
+				msg := truncateMsg(m.Text, 150)
 				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", ts, m.Channel, m.User, msg)
 			}
 			_ = w.Flush()

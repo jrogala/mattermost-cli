@@ -9,14 +9,17 @@ import (
 	"github.com/jrogala/mattermost-cli/client"
 )
 
-// Message represents a single channel message.
+// Message represents a single channel message (from REST or WebSocket).
 type Message struct {
 	ID        string    `json:"id"`
 	ChannelID string    `json:"channel_id"`
+	Channel   string    `json:"channel_name,omitempty"`
 	User      string    `json:"user"`
-	UserID    string    `json:"user_id"`
+	UserID    string    `json:"user_id,omitempty"`
 	Text      string    `json:"message"`
 	Time      time.Time `json:"time"`
+	Event     string    `json:"event,omitempty"`     // WS event type: "posted", "post_deleted", etc.
+	PostType  string    `json:"post_type,omitempty"` // system post type if any
 }
 
 // ReadOptions configures message reading.

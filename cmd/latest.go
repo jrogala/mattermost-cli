@@ -50,7 +50,7 @@ var latestCmd = &cobra.Command{
 					currentChannel = p.Channel
 				}
 				ts := p.Time.Format("Jan 02 15:04")
-				msg := truncateMsg(p.Message, 120)
+				msg := truncateMsg(p.Text, 120)
 				_, _ = fmt.Fprintf(w, "  %s\t%s\t%s\n", ts, p.User, msg)
 			}
 			_ = w.Flush()

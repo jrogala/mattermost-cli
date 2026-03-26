@@ -7,12 +7,15 @@ import (
 	"github.com/jrogala/mattermost-cli/client"
 )
 
-// ChannelEntry represents a channel in listing results.
-type ChannelEntry struct {
+// Channel represents a Mattermost channel with optional unread/mute state.
+type Channel struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
 	DisplayName string `json:"display_name"`
 	Type        string `json:"type"`
+	Unread      int64  `json:"unread,omitempty"`
+	Mentions    int    `json:"mentions,omitempty"`
+	Muted       bool   `json:"muted,omitempty"`
 }
 
 // ListOptions configures channel listing.
@@ -23,7 +26,7 @@ type ListOptions struct {
 }
 
 // ListChannels returns channels the user belongs to, filtered by options.
-func ListChannels(c *client.Client, opts ListOptions) ([]ChannelEntry, error) {
+func ListChannels(c *client.Client, opts ListOptions) ([]Channel, error) {
 	me, err := c.Me()
 	if err != nil {
 		return nil, err
@@ -70,9 +73,9 @@ func ListChannels(c *client.Client, opts ListOptions) ([]ChannelEntry, error) {
 		channels = filtered
 	}
 
-	var entries []ChannelEntry
+	var entries []Channel
 	for _, ch := range channels {
-		entries = append(entries, ChannelEntry{
+		entries = append(entries, Channel{
 			ID:          ch.ID,
 			Name:        ch.Name,
 			DisplayName: ResolveChannelName(c, ch, me.ID),
@@ -82,15 +85,8 @@ func ListChannels(c *client.Client, opts ListOptions) ([]ChannelEntry, error) {
 	return entries, nil
 }
 
-// FindResult represents a channel search result.
-type FindResult struct {
-	ID          string `json:"channel_id"`
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-}
-
 // FindChannels searches for channels matching a term.
-func FindChannels(c *client.Client, term string, typeFilter string) ([]FindResult, error) {
+func FindChannels(c *client.Client, term string, typeFilter string) ([]Channel, error) {
 	me, err := c.Me()
 	if err != nil {
 		return nil, err
@@ -118,30 +114,24 @@ func FindChannels(c *client.Client, term string, typeFilter string) ([]FindResul
 	}
 
 	termLower := strings.ToLower(term)
-	var results []FindResult
+	var results []Channel
 	for _, ch := range channels {
 		name := ResolveChannelName(c, ch, me.ID)
 		if strings.Contains(strings.ToLower(name), termLower) ||
 			strings.Contains(strings.ToLower(ch.Name), termLower) {
-			results = append(results, FindResult{
-				ID:   ch.ID,
-				Name: name,
-				Type: channelTypeName(ch.Type),
+			results = append(results, Channel{
+				ID:          ch.ID,
+				Name:        ch.Name,
+				DisplayName: name,
+				Type:        channelTypeName(ch.Type),
 			})
 		}
 	}
 	return results, nil
 }
 
-// DMResult represents a DM channel lookup result.
-type DMResult struct {
-	ChannelID string `json:"channel_id"`
-	Username  string `json:"username"`
-	Type      string `json:"type"`
-}
-
 // FindDMChannel finds or creates a DM channel with a user by username.
-func FindDMChannel(c *client.Client, username string) (*DMResult, error) {
+func FindDMChannel(c *client.Client, username string) (*Channel, error) {
 	u, err := c.GetUserByUsername(username)
 	if err != nil {
 		return nil, fmt.Errorf("user %q not found: %w", username, err)
@@ -150,10 +140,10 @@ func FindDMChannel(c *client.Client, username string) (*DMResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &DMResult{
-		ChannelID: dm.ID,
-		Username:  u.Username,
-		Type:      "dm",
+	return &Channel{
+		ID:          dm.ID,
+		DisplayName: u.Username + " (DM)",
+		Type:        "dm",
 	}, nil
 }
 

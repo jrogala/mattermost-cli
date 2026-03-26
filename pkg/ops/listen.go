@@ -9,34 +9,21 @@ import (
 	"github.com/jrogala/mattermost-cli/client"
 )
 
-// ListenEvent is the ops-layer representation of a WebSocket event.
-type ListenEvent struct {
-	Event     string          `json:"event"`
-	ChannelID string          `json:"channel_id"`
-	Sender    string          `json:"sender,omitempty"`
-	Message   string          `json:"message,omitempty"`
-	PostID    string          `json:"post_id,omitempty"`
-	PostType  string          `json:"post_type,omitempty"`
-	Channel   string          `json:"channel_name,omitempty"`
-	Time      time.Time       `json:"time"`
-	Raw       json.RawMessage `json:"raw,omitempty"`
-}
-
 // ListenOptions configures the listen stream.
 type ListenOptions struct {
 	EventTypes []string // filter: only these event types (empty = all)
 	ChannelIDs []string // filter: only these channel IDs (empty = all)
 }
 
-// Listen connects via WebSocket and returns a channel of events.
+// Listen connects via WebSocket and returns a channel of messages.
 // The channel closes when ctx is canceled or the connection fails permanently.
-func Listen(ctx context.Context, c *client.Client, opts ListenOptions) (<-chan ListenEvent, <-chan error, error) {
+func Listen(ctx context.Context, c *client.Client, opts ListenOptions) (<-chan Message, <-chan error, error) {
 	ws, err := c.Connect(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	events := make(chan ListenEvent)
+	events := make(chan Message)
 	errs := make(chan error, 1)
 
 	eventSet := toSet(opts.EventTypes)
@@ -75,15 +62,15 @@ func Listen(ctx context.Context, c *client.Client, opts ListenOptions) (<-chan L
 				continue
 			}
 
-			evt := parseEvent(raw)
+			msg := parseWSEvent(raw)
 
 			// Skip system posts (join/leave notifications etc.)
-			if evt.PostType != "" {
+			if msg.PostType != "" {
 				continue
 			}
 
 			select {
-			case events <- evt:
+			case events <- msg:
 			case <-ctx.Done():
 				return
 			}
@@ -93,24 +80,23 @@ func Listen(ctx context.Context, c *client.Client, opts ListenOptions) (<-chan L
 	return events, errs, nil
 }
 
-func parseEvent(raw *client.WSEvent) ListenEvent {
-	evt := ListenEvent{
+func parseWSEvent(raw *client.WSEvent) Message {
+	msg := Message{
 		Event:     raw.Event,
 		ChannelID: raw.Broadcast.ChannelID,
 		Time:      time.Now(),
-		Raw:       raw.Data,
 	}
 
 	var data map[string]json.RawMessage
 	if err := json.Unmarshal(raw.Data, &data); err != nil {
-		return evt
+		return msg
 	}
 
 	// Extract sender_name (strip leading @)
 	if sn, ok := data["sender_name"]; ok {
 		var sender string
 		if json.Unmarshal(sn, &sender) == nil {
-			evt.Sender = strings.TrimPrefix(sender, "@")
+			msg.User = strings.TrimPrefix(sender, "@")
 		}
 	}
 
@@ -118,16 +104,16 @@ func parseEvent(raw *client.WSEvent) ListenEvent {
 	if cn, ok := data["channel_name"]; ok {
 		var name string
 		if json.Unmarshal(cn, &name) == nil {
-			evt.Channel = name
+			msg.Channel = name
 		}
 	}
 
 	// Extract channel_display_name as fallback
-	if evt.Channel == "" {
+	if msg.Channel == "" {
 		if cdn, ok := data["channel_display_name"]; ok {
 			var name string
 			if json.Unmarshal(cdn, &name) == nil {
-				evt.Channel = name
+				msg.Channel = name
 			}
 		}
 	}
@@ -144,11 +130,11 @@ func parseEvent(raw *client.WSEvent) ListenEvent {
 					CreateAt int64  `json:"create_at"`
 				}
 				if json.Unmarshal([]byte(postStr), &post) == nil {
-					evt.PostID = post.ID
-					evt.Message = post.Message
-					evt.PostType = post.Type
+					msg.ID = post.ID
+					msg.Text = post.Message
+					msg.PostType = post.Type
 					if post.CreateAt > 0 {
-						evt.Time = time.UnixMilli(post.CreateAt)
+						msg.Time = time.UnixMilli(post.CreateAt)
 					}
 				}
 			}
@@ -164,13 +150,13 @@ func parseEvent(raw *client.WSEvent) ListenEvent {
 					ID string `json:"id"`
 				}
 				if json.Unmarshal([]byte(postStr), &post) == nil {
-					evt.PostID = post.ID
+					msg.ID = post.ID
 				}
 			}
 		}
 	}
 
-	return evt
+	return msg
 }
 
 func toSet(items []string) map[string]bool {

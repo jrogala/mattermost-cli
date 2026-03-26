@@ -8,14 +8,6 @@ import (
 	"github.com/jrogala/mattermost-cli/client"
 )
 
-// LatestPost represents a message in the latest feed.
-type LatestPost struct {
-	Channel string    `json:"channel"`
-	Time    time.Time `json:"time"`
-	User    string    `json:"user"`
-	Message string    `json:"message"`
-}
-
 // LatestOptions configures the latest messages query.
 type LatestOptions struct {
 	TeamID     string
@@ -24,7 +16,7 @@ type LatestOptions struct {
 }
 
 // GetLatest returns recent messages across non-muted channels.
-func GetLatest(c *client.Client, opts LatestOptions) ([]LatestPost, error) {
+func GetLatest(c *client.Client, opts LatestOptions) ([]Message, error) {
 	me, err := c.Me()
 	if err != nil {
 		return nil, err
@@ -96,7 +88,7 @@ func GetLatest(c *client.Client, opts LatestOptions) ([]LatestPost, error) {
 		return u.Username
 	}
 
-	var posts []LatestPost
+	var posts []Message
 	for _, ch := range active {
 		pl, err := c.GetChannelPosts(ch.ID, map[string]string{
 			"per_page": strconv.Itoa(perChannel),
@@ -108,11 +100,17 @@ func GetLatest(c *client.Client, opts LatestOptions) ([]LatestPost, error) {
 		name := ResolveChannelName(c, ch, me.ID)
 		for i := len(pl.Order) - 1; i >= 0; i-- {
 			post := pl.Posts[pl.Order[i]]
-			posts = append(posts, LatestPost{
-				Channel: name,
-				Time:    time.UnixMilli(post.CreateAt),
-				User:    resolveUser(post.UserID),
-				Message: post.Message,
+			if post.IsSystem() {
+				continue
+			}
+			posts = append(posts, Message{
+				ID:        post.ID,
+				ChannelID: ch.ID,
+				Channel:   name,
+				User:      resolveUser(post.UserID),
+				UserID:    post.UserID,
+				Text:      post.Message,
+				Time:      time.UnixMilli(post.CreateAt),
 			})
 		}
 	}
