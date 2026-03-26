@@ -3,7 +3,6 @@ package tui
 import (
 	"context"
 
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/jrogala/mattermost-cli/pkg/ops"
 )
@@ -21,7 +20,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.ready = true
 		m.list.SetHeight(msg.Height)
-		m.viewport = viewport.New(msg.Width-sidebarWidth-2, msg.Height-4)
+		contentW := msg.Width - sidebarWidth - 2
+		vpH := msg.Height - 4
+		if vpH < 1 {
+			vpH = 1
+		}
+		m.viewport.Width = contentW
+		m.viewport.Height = vpH
 		m.viewport.SetContent(m.renderMessages())
 		m.viewport.GotoBottom()
 		return m, nil
@@ -180,9 +185,11 @@ func (m Model) handleSidebarKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// If selection changed, load messages for new channel
+	// If selection changed, clear messages and load new channel
 	if m.list.Index() != prevIndex {
 		if ch := m.selectedChannel(); ch != nil {
+			m.messages = nil
+			m.viewport.SetContent(statusStyle.Render("Loading..."))
 			return m, tea.Batch(cmd, loadMessages(m.client, ch.ID))
 		}
 	}

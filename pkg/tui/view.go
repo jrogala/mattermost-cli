@@ -47,13 +47,13 @@ func (m Model) renderContent() string {
 	contentWidth := m.width - sidebarWidth - 2
 	input := inStyle.Width(contentWidth).Render(m.input.View())
 
-	// Viewport fills remaining space
-	vpHeight := m.height - 3
-	if vpHeight < 1 {
-		vpHeight = 1
+	// Ensure viewport never exceeds available space
+	vpH := m.height - 4
+	if vpH < 1 {
+		vpH = 1
 	}
 	m.viewport.Width = contentWidth
-	m.viewport.Height = vpHeight
+	m.viewport.Height = vpH
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, m.viewport.View(), input)
 }
