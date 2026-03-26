@@ -24,52 +24,18 @@ func (m Model) View() string {
 }
 
 func (m Model) renderSidebar() string {
-	var sb strings.Builder
-
 	sbStyle := sidebarStyle
 	if m.pane == paneSidebar {
 		sbStyle = sidebarActiveStyle
 	}
-
-	for i, ch := range m.channels {
-		name := ch.DisplayName
-		if len(name) > sidebarWidth-4 {
-			name = name[:sidebarWidth-7] + "..."
-		}
-
-		var line string
-		switch {
-		case i == m.selected:
-			badge := ""
-			if ch.Unread > 0 {
-				badge = fmt.Sprintf(" (%d)", ch.Unread)
-			}
-			line = channelSelectedStyle.Render("▸ " + name + badge)
-		case ch.Unread > 0:
-			badge := fmt.Sprintf(" (%d)", ch.Unread)
-			line = channelUnreadStyle.Render("  " + name + badge)
-		default:
-			line = channelStyle.Render("  " + name)
-		}
-
-		sb.WriteString(line)
-		sb.WriteString("\n")
-	}
-
-	// Pad to fill height
-	lines := len(m.channels)
-	for i := lines; i < m.height-1; i++ {
-		sb.WriteString("\n")
-	}
-
-	return sbStyle.Height(m.height - 1).Render(sb.String())
+	return sbStyle.Height(m.height).Render(m.list.View())
 }
 
 func (m Model) renderContent() string {
 	// Header
 	chName := ""
-	if m.selected >= 0 && m.selected < len(m.channels) {
-		chName = m.channels[m.selected].DisplayName
+	if ch := m.selectedChannel(); ch != nil {
+		chName = ch.DisplayName
 	}
 	header := headerStyle.Render("#" + chName)
 
@@ -82,7 +48,7 @@ func (m Model) renderContent() string {
 	input := inStyle.Width(contentWidth).Render(m.input.View())
 
 	// Viewport fills remaining space
-	vpHeight := m.height - 3 // header(1) + border(1) + input(1)
+	vpHeight := m.height - 3
 	if vpHeight < 1 {
 		vpHeight = 1
 	}
@@ -101,7 +67,7 @@ func (m Model) renderMessages() string {
 	for _, msg := range m.messages {
 		ts := msgTimeStyle.Render(msg.Time.Format("15:04"))
 		user := msgUserStyle.Render(msg.User)
-		sb.WriteString(fmt.Sprintf("%s %s  %s\n", ts, user, msg.Text))
+		fmt.Fprintf(&sb, "%s %s  %s\n", ts, user, msg.Text)
 	}
 	return sb.String()
 }
