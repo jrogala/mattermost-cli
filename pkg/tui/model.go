@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -23,16 +24,7 @@ type channelItem struct {
 }
 
 func (c channelItem) FilterValue() string { return c.channel.DisplayName }
-func (c channelItem) Title() string {
-	name := c.channel.DisplayName
-	if c.channel.Muted {
-		name += " (muted)"
-	}
-	if c.channel.Unread > 0 {
-		name = fmt.Sprintf("%s [%d]", name, c.channel.Unread)
-	}
-	return name
-}
+func (c channelItem) Title() string       { return c.channel.DisplayName }
 func (c channelItem) Description() string { return "" }
 
 // sectionItem is a non-selectable header in the list.
@@ -41,6 +33,57 @@ type sectionItem struct{ title string }
 func (s sectionItem) FilterValue() string { return "" }
 func (s sectionItem) Title() string       { return s.title }
 func (s sectionItem) Description() string { return "" }
+
+// channelDelegate renders sidebar items with sections, muted state, unread badges.
+type channelDelegate struct{}
+
+func (d channelDelegate) Height() int                             { return 1 }
+func (d channelDelegate) Spacing() int                            { return 0 }
+func (d channelDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d channelDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
+	// Section header
+	if si, ok := item.(sectionItem); ok {
+		fmt.Fprint(w, sectionHeaderStyle.Render(si.title))
+		return
+	}
+
+	ci, ok := item.(channelItem)
+	if !ok {
+		return
+	}
+
+	ch := ci.channel
+	name := ch.DisplayName
+	maxW := sidebarWidth - 6
+	if len(name) > maxW {
+		name = name[:maxW-1] + "…"
+	}
+
+	// Badge: unread count
+	badge := ""
+	if ch.Unread > 0 {
+		badge = fmt.Sprintf(" [%d]", ch.Unread)
+	}
+
+	// Prefix: cursor or space
+	prefix := "  "
+	if index == m.Index() {
+		prefix = "▸ "
+	}
+
+	line := prefix + name + badge
+
+	switch {
+	case index == m.Index():
+		fmt.Fprint(w, channelSelectedStyle.Render(line))
+	case ch.Muted:
+		fmt.Fprint(w, channelMutedStyle.Render(line))
+	case ch.Unread > 0:
+		fmt.Fprint(w, channelUnreadStyle.Render(line))
+	default:
+		fmt.Fprint(w, channelStyle.Render(line))
+	}
+}
 
 // Model is the Bubble Tea model for the TUI.
 type Model struct {
@@ -85,14 +128,7 @@ func New(c *client.Client) Model {
 	ti.Placeholder = "type a message..."
 	ti.CharLimit = 4000
 
-	delegate := list.NewDefaultDelegate()
-	delegate.ShowDescription = false
-	delegate.SetSpacing(0)
-	delegate.Styles.NormalTitle = channelStyle
-	delegate.Styles.SelectedTitle = channelSelectedStyle
-	delegate.Styles.DimmedTitle = channelMutedStyle
-
-	l := list.New(nil, delegate, sidebarWidth, 10)
+	l := list.New(nil, channelDelegate{}, sidebarWidth, 10)
 	l.SetShowTitle(false)
 	l.SetShowStatusBar(false)
 	l.SetShowHelp(false)
@@ -124,7 +160,7 @@ func (m Model) selectedChannel() *ops.Channel {
 	}
 	ci, ok := item.(channelItem)
 	if !ok {
-		return nil // section header
+		return nil
 	}
 	return &ci.channel
 }
@@ -138,14 +174,13 @@ func (m Model) selectedChannelID() string {
 }
 
 // buildListItems creates the sidebar items with section headers.
-// Channels first, then DMs. DMs without unread are hidden.
+// Channels first, then DMs with unread only.
 func buildListItems(channels []ops.Channel) []list.Item {
 	var chItems, dmItems []list.Item
 
 	for _, ch := range channels {
 		item := channelItem{ch}
 		if ch.Type == "dm" || ch.Type == "group" {
-			// Only show DMs with unread messages
 			if ch.Unread > 0 {
 				dmItems = append(dmItems, item)
 			}
@@ -156,11 +191,11 @@ func buildListItems(channels []ops.Channel) []list.Item {
 
 	var items []list.Item
 	if len(chItems) > 0 {
-		items = append(items, sectionItem{"── Channels ──"})
+		items = append(items, sectionItem{"─ Channels"})
 		items = append(items, chItems...)
 	}
 	if len(dmItems) > 0 {
-		items = append(items, sectionItem{"── Direct Messages ──"})
+		items = append(items, sectionItem{"─ Direct Messages"})
 		items = append(items, dmItems...)
 	}
 

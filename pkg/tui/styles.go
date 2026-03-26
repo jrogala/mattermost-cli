@@ -2,7 +2,7 @@ package tui
 
 import "github.com/charmbracelet/lipgloss"
 
-const sidebarWidth = 22
+const sidebarWidth = 28
 
 var (
 	subtle    = lipgloss.AdaptiveColor{Light: "#999999", Dark: "#666666"}
@@ -21,21 +21,22 @@ var (
 				BorderStyle(lipgloss.NormalBorder()).
 				BorderForeground(highlight)
 
+	sectionHeaderStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(special).
+				PaddingLeft(1)
+
 	channelStyle = lipgloss.NewStyle().
-			PaddingLeft(1).
 			Foreground(subtle)
 
 	channelSelectedStyle = lipgloss.NewStyle().
-				PaddingLeft(1).
 				Bold(true).
 				Foreground(highlight)
 
 	channelUnreadStyle = lipgloss.NewStyle().
-				PaddingLeft(1).
 				Bold(true)
 
 	channelMutedStyle = lipgloss.NewStyle().
-				PaddingLeft(1).
 				Foreground(subtle).
 				Faint(true)
 
