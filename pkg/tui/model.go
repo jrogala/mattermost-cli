@@ -15,7 +15,13 @@ import (
 
 const (
 	paneSidebar = iota
+	paneMessages
 	paneInput
+)
+
+const (
+	sidebarModeChannels = iota
+	sidebarModeDMs
 )
 
 // channelItem implements list.Item for the sidebar.
@@ -96,8 +102,11 @@ type Model struct {
 	list     list.Model
 
 	// Messages
-	messages []ops.Message
-	viewport viewport.Model
+	messages    []ops.Message
+	viewport    viewport.Model
+	selectedMsg int
+	showDetail  bool
+	detailVP    viewport.Model
 
 	// Input
 	input textinput.Model
@@ -108,10 +117,13 @@ type Model struct {
 	wsCancel context.CancelFunc
 
 	// Layout
-	width  int
-	height int
-	pane   int
-	ready  bool
+	width        int
+	height       int
+	pane         int
+	sidebarMode  int
+	ready        bool
+	showHelp     bool
+	notification string
 }
 
 // tea.Msg types
@@ -123,6 +135,8 @@ type messagesLoadedMsg struct {
 type wsEventMsg struct{ msg ops.Message }
 type wsClosedMsg struct{}
 type messageSentMsg struct{}
+type debounceLoadMsg struct{ channelID string }
+type dismissNotificationMsg struct{}
 type errMsg struct{ err error }
 
 // New creates a new TUI model.
@@ -139,10 +153,11 @@ func New(c *client.Client) Model {
 	l.DisableQuitKeybindings()
 
 	return Model{
-		client: c,
-		input:  ti,
-		list:   l,
-		pane:   paneSidebar,
+		client:   c,
+		input:    ti,
+		list:     l,
+		pane:     paneSidebar,
+		showHelp: true,
 	}
 }
 
@@ -177,10 +192,22 @@ func (m Model) selectedChannelID() string {
 }
 
 // buildListItems creates the sidebar items with section headers.
-// Channels first, then DMs with unread only.
-func buildListItems(channels []ops.Channel) []list.Item {
-	var chItems, dmItems []list.Item
+func buildListItems(channels []ops.Channel, mode int) []list.Item {
+	var items []list.Item
 
+	if mode == sidebarModeDMs {
+		var dmItems []list.Item
+		for _, ch := range channels {
+			if ch.Type == "dm" || ch.Type == "group" {
+				dmItems = append(dmItems, channelItem{ch})
+			}
+		}
+		items = append(items, sectionItem{"─ Direct Messages"})
+		items = append(items, dmItems...)
+		return items
+	}
+
+	var chItems, dmItems []list.Item
 	for _, ch := range channels {
 		item := channelItem{ch}
 		if ch.Type == "dm" || ch.Type == "group" {
@@ -191,8 +218,6 @@ func buildListItems(channels []ops.Channel) []list.Item {
 			chItems = append(chItems, item)
 		}
 	}
-
-	var items []list.Item
 	if len(chItems) > 0 {
 		items = append(items, sectionItem{"─ Channels"})
 		items = append(items, chItems...)
@@ -201,6 +226,5 @@ func buildListItems(channels []ops.Channel) []list.Item {
 		items = append(items, sectionItem{"─ Direct Messages"})
 		items = append(items, dmItems...)
 	}
-
 	return items
 }

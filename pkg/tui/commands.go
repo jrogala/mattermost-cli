@@ -64,6 +64,13 @@ func waitForWS(events <-chan ops.Message) tea.Cmd {
 	}
 }
 
+func viewChannel(c *client.Client, channelID string) tea.Cmd {
+	return func() tea.Msg {
+		_ = c.ViewChannel(channelID)
+		return nil
+	}
+}
+
 func sendMessage(c *client.Client, channelID, text string) tea.Cmd {
 	return func() tea.Msg {
 		_, err := ops.SendMessage(c, channelID, text)

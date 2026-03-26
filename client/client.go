@@ -308,3 +308,14 @@ func (c *Client) GetOrCreateDM(otherUserID string) (*Channel, error) {
 	var ch Channel
 	return &ch, json.Unmarshal(data, &ch)
 }
+
+// ViewChannel marks a channel as viewed, clearing unread counts on the server.
+func (c *Client) ViewChannel(channelID string) error {
+	payload := map[string]string{"channel_id": channelID}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	_, err = c.do("POST", "/channels/members/me/view", strings.NewReader(string(body)))
+	return err
+}

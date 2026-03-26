@@ -19,7 +19,7 @@ var (
 				Width(sidebarWidth).
 				BorderRight(true).
 				BorderStyle(lipgloss.NormalBorder()).
-				BorderForeground(highlight)
+				BorderForeground(special)
 
 	sectionHeaderStyle = lipgloss.NewStyle().
 				Bold(true).
@@ -48,12 +48,18 @@ var (
 	inputActiveStyle = lipgloss.NewStyle().
 				BorderTop(true).
 				BorderStyle(lipgloss.NormalBorder()).
-				BorderForeground(highlight)
+				BorderForeground(special)
 
 	headerStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(special).
 			PaddingLeft(1)
+
+	headerActiveStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(special).
+				PaddingLeft(1).
+				Underline(true)
 
 	msgTimeStyle = lipgloss.NewStyle().
 			Foreground(subtle)
@@ -61,7 +67,23 @@ var (
 	msgUserStyle = lipgloss.NewStyle().
 			Bold(true)
 
+	msgSelectedStyle = lipgloss.NewStyle().
+				Foreground(highlight).
+				Bold(true)
+
 	statusStyle = lipgloss.NewStyle().
 			Foreground(subtle).
 			PaddingLeft(1)
+
+	helpStyle = lipgloss.NewStyle().
+			Foreground(subtle)
+
+	notificationStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(lipgloss.AdaptiveColor{Light: "#E85D4A", Dark: "#FF6B6B"})
+
+	detailStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(special).
+			Padding(0, 1)
 )

@@ -16,7 +16,7 @@ var tuiCmd = &cobra.Command{
 	RunE: func(_ *cobra.Command, _ []string) error {
 		c := newClient()
 		m := tui.New(c)
-		p := tea.NewProgram(m, tea.WithAltScreen())
+		p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 		_, err := p.Run()
 		return err
 	},
