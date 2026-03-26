@@ -6,17 +6,6 @@ import (
 	"github.com/jrogala/mattermost-cli/client"
 )
 
-// UnreadEntry represents a channel with unread messages.
-type UnreadEntry struct {
-	ChannelID   string `json:"channel_id"`
-	Name        string `json:"name"`
-	DisplayName string `json:"display_name"`
-	Type        string `json:"type"`
-	Unread      int64  `json:"unread"`
-	Mentions    int    `json:"mentions"`
-	Muted       bool   `json:"muted"`
-}
-
 // UnreadOptions configures unread listing.
 type UnreadOptions struct {
 	TeamID       string
@@ -24,7 +13,7 @@ type UnreadOptions struct {
 }
 
 // GetUnread returns channels with unread messages, sorted by mentions then unread count.
-func GetUnread(c *client.Client, opts UnreadOptions) ([]UnreadEntry, error) {
+func GetUnread(c *client.Client, opts UnreadOptions) ([]Channel, error) {
 	me, err := c.Me()
 	if err != nil {
 		return nil, err
@@ -50,7 +39,7 @@ func GetUnread(c *client.Client, opts UnreadOptions) ([]UnreadEntry, error) {
 		memberMap[members[i].ChannelID] = &members[i]
 	}
 
-	var entries []UnreadEntry
+	var entries []Channel
 	for _, ch := range channels {
 		m, ok := memberMap[ch.ID]
 		if !ok {
@@ -63,8 +52,8 @@ func GetUnread(c *client.Client, opts UnreadOptions) ([]UnreadEntry, error) {
 		if m.IsMuted() && !opts.IncludeMuted {
 			continue
 		}
-		entries = append(entries, UnreadEntry{
-			ChannelID:   ch.ID,
+		entries = append(entries, Channel{
+			ID:          ch.ID,
 			Name:        ch.Name,
 			DisplayName: ResolveChannelName(c, ch, me.ID),
 			Type:        channelTypeName(ch.Type),

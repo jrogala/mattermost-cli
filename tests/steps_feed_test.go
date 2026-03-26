@@ -84,12 +84,12 @@ func (sc *scenarioCtx) iGetUnreadChannelsIncludingMuted() error {
 
 func (sc *scenarioCtx) unreadListShouldInclude(name string) error {
 	expectedID := sc.channels[name]
-	entries, ok := sc.unreadList.([]ops.UnreadEntry)
+	entries, ok := sc.unreadList.([]ops.Channel)
 	if !ok {
 		return fmt.Errorf("no unread list available")
 	}
 	for _, e := range entries {
-		if e.ChannelID == expectedID {
+		if e.ID == expectedID {
 			return nil
 		}
 	}
@@ -98,12 +98,12 @@ func (sc *scenarioCtx) unreadListShouldInclude(name string) error {
 
 func (sc *scenarioCtx) unreadListShouldNotInclude(name string) error {
 	expectedID := sc.channels[name]
-	entries, ok := sc.unreadList.([]ops.UnreadEntry)
+	entries, ok := sc.unreadList.([]ops.Channel)
 	if !ok {
 		return nil
 	}
 	for _, e := range entries {
-		if e.ChannelID == expectedID {
+		if e.ID == expectedID {
 			return fmt.Errorf("channel %q should not be in unread list", name)
 		}
 	}
@@ -112,16 +112,16 @@ func (sc *scenarioCtx) unreadListShouldNotInclude(name string) error {
 
 func (sc *scenarioCtx) shouldAppearBeforeInUnreadList(first, second string) error {
 	firstID, secondID := sc.channels[first], sc.channels[second]
-	entries, ok := sc.unreadList.([]ops.UnreadEntry)
+	entries, ok := sc.unreadList.([]ops.Channel)
 	if !ok {
 		return fmt.Errorf("no unread list available")
 	}
 	firstIdx, secondIdx := -1, -1
 	for i, e := range entries {
-		if e.ChannelID == firstID {
+		if e.ID == firstID {
 			firstIdx = i
 		}
-		if e.ChannelID == secondID {
+		if e.ID == secondID {
 			secondIdx = i
 		}
 	}
@@ -138,7 +138,7 @@ func (sc *scenarioCtx) shouldAppearBeforeInUnreadList(first, second string) erro
 }
 
 func (sc *scenarioCtx) unreadListShouldBeEmpty() error {
-	entries, ok := sc.unreadList.([]ops.UnreadEntry)
+	entries, ok := sc.unreadList.([]ops.Channel)
 	if ok && len(entries) > 0 {
 		return fmt.Errorf("expected empty unread list, got %d entries", len(entries))
 	}
@@ -220,7 +220,7 @@ func (sc *scenarioCtx) iGetLatestMessagesWithPerChannelLimit(n int) error {
 }
 
 func (sc *scenarioCtx) latestResultsShouldIncludeChannel(name string) error {
-	posts, ok := sc.latestList.([]ops.LatestPost)
+	posts, ok := sc.latestList.([]ops.Message)
 	if !ok {
 		return fmt.Errorf("no latest results available")
 	}
@@ -233,7 +233,7 @@ func (sc *scenarioCtx) latestResultsShouldIncludeChannel(name string) error {
 }
 
 func (sc *scenarioCtx) latestResultsShouldNotIncludeChannel(name string) error {
-	posts, ok := sc.latestList.([]ops.LatestPost)
+	posts, ok := sc.latestList.([]ops.Message)
 	if !ok {
 		return nil
 	}
@@ -246,7 +246,7 @@ func (sc *scenarioCtx) latestResultsShouldNotIncludeChannel(name string) error {
 }
 
 func (sc *scenarioCtx) latestResultsShouldHaveAtMostNChannels(n int) error {
-	posts, ok := sc.latestList.([]ops.LatestPost)
+	posts, ok := sc.latestList.([]ops.Message)
 	if !ok {
 		return nil
 	}
@@ -261,7 +261,7 @@ func (sc *scenarioCtx) latestResultsShouldHaveAtMostNChannels(n int) error {
 }
 
 func (sc *scenarioCtx) sectionShouldHaveAtMostNMessages(name string, n int) error {
-	posts, ok := sc.latestList.([]ops.LatestPost)
+	posts, ok := sc.latestList.([]ops.Message)
 	if !ok {
 		return fmt.Errorf("no latest results available")
 	}
@@ -278,7 +278,7 @@ func (sc *scenarioCtx) sectionShouldHaveAtMostNMessages(name string, n int) erro
 }
 
 func (sc *scenarioCtx) latestResultsShouldBeEmpty() error {
-	posts, ok := sc.latestList.([]ops.LatestPost)
+	posts, ok := sc.latestList.([]ops.Message)
 	if ok && len(posts) > 0 {
 		return fmt.Errorf("expected empty latest results, got %d posts", len(posts))
 	}
@@ -321,7 +321,7 @@ func (sc *scenarioCtx) iGetMyMentions() error {
 }
 
 func (sc *scenarioCtx) mentionsShouldIncludeMessageFrom(username string) error {
-	mentions, ok := sc.mentionList.([]ops.Mention)
+	mentions, ok := sc.mentionList.([]ops.Message)
 	if !ok {
 		return fmt.Errorf("no mentions available")
 	}
@@ -334,7 +334,7 @@ func (sc *scenarioCtx) mentionsShouldIncludeMessageFrom(username string) error {
 }
 
 func (sc *scenarioCtx) mentionsShouldReferenceChannel(name string) error {
-	mentions, ok := sc.mentionList.([]ops.Mention)
+	mentions, ok := sc.mentionList.([]ops.Message)
 	if !ok {
 		return fmt.Errorf("no mentions available")
 	}
@@ -347,7 +347,7 @@ func (sc *scenarioCtx) mentionsShouldReferenceChannel(name string) error {
 }
 
 func (sc *scenarioCtx) mentionsListShouldBeEmpty() error {
-	mentions, ok := sc.mentionList.([]ops.Mention)
+	mentions, ok := sc.mentionList.([]ops.Message)
 	if ok && len(mentions) > 0 {
 		return fmt.Errorf("expected empty mentions, got %d", len(mentions))
 	}

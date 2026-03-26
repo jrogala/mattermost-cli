@@ -528,6 +528,12 @@ func (env *TestEnvironment) ViewChannel(channelID string) error {
 	return err
 }
 
+// DeletePost deletes a post by ID.
+func (env *TestEnvironment) DeletePost(token, postID string) error {
+	_, _, err := env.apiCall("DELETE", fmt.Sprintf("/posts/%s", postID), nil, token)
+	return err
+}
+
 // pidFilePath returns the path to the idle killer PID file.
 func pidFilePath() string {
 	return filepath.Join(os.TempDir(), "mm-test-killer.pid")

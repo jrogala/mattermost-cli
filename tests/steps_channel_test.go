@@ -74,7 +74,7 @@ func (sc *scenarioCtx) iHaveADMChannelWithUser(username string) error {
 	if err != nil {
 		return err
 	}
-	sc.channels[username+" (DM)"] = result.ChannelID
+	sc.channels[username+" (DM)"] = result.ID
 	return nil
 }
 
@@ -118,7 +118,7 @@ func (sc *scenarioCtx) resultShouldIncludeChannel(name string) error {
 	if !ok {
 		return fmt.Errorf("channel %q was not created in this scenario", name)
 	}
-	list, ok := sc.channelList.([]ops.ChannelEntry)
+	list, ok := sc.channelList.([]ops.Channel)
 	if !ok {
 		return fmt.Errorf("no channel list available")
 	}
@@ -135,7 +135,7 @@ func (sc *scenarioCtx) resultShouldNotIncludeChannel(name string) error {
 	if !ok {
 		return nil // not created = not in list
 	}
-	list, ok := sc.channelList.([]ops.ChannelEntry)
+	list, ok := sc.channelList.([]ops.Channel)
 	if !ok {
 		return fmt.Errorf("no channel list available")
 	}
@@ -148,7 +148,7 @@ func (sc *scenarioCtx) resultShouldNotIncludeChannel(name string) error {
 }
 
 func (sc *scenarioCtx) resultShouldIncludeDMWith(username string) error {
-	list, ok := sc.channelList.([]ops.ChannelEntry)
+	list, ok := sc.channelList.([]ops.Channel)
 	if !ok {
 		return fmt.Errorf("no channel list available")
 	}
@@ -178,7 +178,7 @@ func (sc *scenarioCtx) iSearchForDMChannelWithUser(username string) error {
 }
 
 func (sc *scenarioCtx) iShouldFindExactlyNChannels(n int) error {
-	results, ok := sc.findResults.([]ops.FindResult)
+	results, ok := sc.findResults.([]ops.Channel)
 	if !ok {
 		return fmt.Errorf("no find results available")
 	}
@@ -190,7 +190,7 @@ func (sc *scenarioCtx) iShouldFindExactlyNChannels(n int) error {
 
 func (sc *scenarioCtx) iShouldFindChannel(name string) error {
 	expectedID := sc.channels[name]
-	results, ok := sc.findResults.([]ops.FindResult)
+	results, ok := sc.findResults.([]ops.Channel)
 	if !ok {
 		return fmt.Errorf("no find results available")
 	}
@@ -203,7 +203,7 @@ func (sc *scenarioCtx) iShouldFindChannel(name string) error {
 }
 
 func (sc *scenarioCtx) foundChannelShouldHaveAnID() error {
-	results, ok := sc.findResults.([]ops.FindResult)
+	results, ok := sc.findResults.([]ops.Channel)
 	if !ok || len(results) == 0 {
 		return fmt.Errorf("no find results available")
 	}
@@ -224,11 +224,11 @@ func (sc *scenarioCtx) iShouldGetADMChannel() error {
 }
 
 func (sc *scenarioCtx) dmChannelShouldHaveAnID() error {
-	result, ok := sc.dmResult.(*ops.DMResult)
+	result, ok := sc.dmResult.(*ops.Channel)
 	if !ok || result == nil {
 		return fmt.Errorf("no DM result available")
 	}
-	if result.ChannelID == "" {
+	if result.ID == "" {
 		return fmt.Errorf("DM channel has empty ID")
 	}
 	return nil

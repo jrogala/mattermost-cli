@@ -23,8 +23,20 @@ func initializeScenario(ctx *godog.ScenarioContext) {
 		sc.unreadList = nil
 		sc.latestList = nil
 		sc.mentionList = nil
+		sc.listenEvents = nil
+		sc.listenErrors = nil
+		sc.listenCancel = nil
+		sc.receivedEvents = nil
+		sc.lastPostID = ""
 		sc.client = sc.newClient()
 		sc.ensureEnvVars()
+		return ctx, nil
+	})
+
+	ctx.After(func(ctx context.Context, sc2 *godog.Scenario, err error) (context.Context, error) {
+		if sc.listenCancel != nil {
+			sc.listenCancel()
+		}
 		return ctx, nil
 	})
 
@@ -124,6 +136,18 @@ func initializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Step(`^the mentions should include a message from "([^"]*)"$`, sc.mentionsShouldIncludeMessageFrom)
 	ctx.Step(`^the mentions should reference channel "([^"]*)"$`, sc.mentionsShouldReferenceChannel)
 	ctx.Step(`^the mentions list should be empty$`, sc.mentionsListShouldBeEmpty)
+
+	// --- Listen ---
+	ctx.Step(`^I am listening on all events$`, sc.iAmListeningOnAllEvents)
+	ctx.Step(`^I am listening for "([^"]*)" events only$`, sc.iAmListeningForEventsOnly)
+	ctx.Step(`^I am listening on channel "([^"]*)" only$`, sc.iAmListeningOnChannelOnly)
+	ctx.Step(`^alice posts "([^"]*)" to channel "([^"]*)"$`, sc.alicePostsToChannel)
+	ctx.Step(`^that post is deleted$`, sc.thatPostIsDeleted)
+	ctx.Step(`^I should receive a "([^"]*)" event within (\d+) seconds$`, sc.iShouldReceiveEventWithinNSeconds)
+	ctx.Step(`^the event message should contain "([^"]*)"$`, sc.eventMessageShouldContain)
+	ctx.Step(`^the event sender should be "([^"]*)"$`, sc.eventSenderShouldBe)
+	ctx.Step(`^I should not have received an event for channel "([^"]*)"$`, sc.iShouldNotHaveReceivedEventForChannel)
+	ctx.Step(`^the event should have a non-empty channel ID$`, sc.eventShouldHaveNonEmptyChannelID)
 }
 
 // --- Background steps ---

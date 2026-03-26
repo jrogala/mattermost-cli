@@ -31,7 +31,7 @@ var findCmd = &cobra.Command{
 				return err
 			}
 			cmdutil.Render(cmd, result, func() {
-				fmt.Printf("%s\t%s (DM)\n", result.ChannelID, result.Username)
+				fmt.Printf("%s\t%s\n", result.ID, result.DisplayName)
 			})
 			return nil
 		}
@@ -49,7 +49,7 @@ var findCmd = &cobra.Command{
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 			_, _ = fmt.Fprintln(w, "ID\tTYPE\tNAME")
 			for _, r := range results {
-				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", r.ID, r.Type, r.Name)
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", r.ID, r.Type, r.DisplayName)
 			}
 			_ = w.Flush()
 		})

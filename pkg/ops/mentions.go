@@ -8,14 +8,6 @@ import (
 	"github.com/jrogala/mattermost-cli/client"
 )
 
-// Mention represents a message that mentions the current user.
-type Mention struct {
-	Channel   string    `json:"channel"`
-	Time      time.Time `json:"time"`
-	User      string    `json:"user"`
-	Message   string    `json:"message"`
-}
-
 // MentionOptions configures the mentions query.
 type MentionOptions struct {
 	TeamID string
@@ -24,7 +16,7 @@ type MentionOptions struct {
 
 // GetMentions returns recent messages that mention the authenticated user.
 // Unlike other feeds, mentions always include muted channels.
-func GetMentions(c *client.Client, opts MentionOptions) ([]Mention, error) {
+func GetMentions(c *client.Client, opts MentionOptions) ([]Message, error) {
 	me, err := c.Me()
 	if err != nil {
 		return nil, err
@@ -85,7 +77,7 @@ func GetMentions(c *client.Client, opts MentionOptions) ([]Mention, error) {
 		return u.Username
 	}
 
-	var mentions []Mention
+	var mentions []Message
 	username := me.Username
 
 	for _, m := range withMentions {
@@ -102,11 +94,14 @@ func GetMentions(c *client.Client, opts MentionOptions) ([]Mention, error) {
 			if !containsMention(post.Message, username) {
 				continue
 			}
-			mentions = append(mentions, Mention{
-				Channel: chanName,
-				Time:    time.UnixMilli(post.CreateAt),
-				User:    resolveUser(post.UserID),
-				Message: post.Message,
+			mentions = append(mentions, Message{
+				ID:        post.ID,
+				ChannelID: m.ChannelID,
+				Channel:   chanName,
+				User:      resolveUser(post.UserID),
+				UserID:    post.UserID,
+				Text:      post.Message,
+				Time:      time.UnixMilli(post.CreateAt),
 			})
 		}
 	}

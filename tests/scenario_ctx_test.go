@@ -1,11 +1,13 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/jrogala/mattermost-cli/client"
 	"github.com/jrogala/mattermost-cli/config"
+	"github.com/jrogala/mattermost-cli/pkg/ops"
 )
 
 // scenarioCtx holds per-scenario state.
@@ -29,6 +31,13 @@ type scenarioCtx struct {
 	unreadList  any
 	latestList  any
 	mentionList any
+
+	// WebSocket listen state
+	listenEvents   <-chan ops.Message
+	listenErrors   <-chan error
+	listenCancel   context.CancelFunc
+	receivedEvents []ops.Message
+	lastPostID     string
 }
 
 func newScenarioCtx(env *TestEnvironment) *scenarioCtx {
