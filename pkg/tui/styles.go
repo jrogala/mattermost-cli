@@ -34,6 +34,11 @@ var (
 				PaddingLeft(1).
 				Bold(true)
 
+	channelMutedStyle = lipgloss.NewStyle().
+				PaddingLeft(1).
+				Foreground(subtle).
+				Faint(true)
+
 	inputStyle = lipgloss.NewStyle().
 			BorderTop(true).
 			BorderStyle(lipgloss.NormalBorder()).

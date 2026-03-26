@@ -3,7 +3,6 @@ package tui
 import (
 	"context"
 
-	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/jrogala/mattermost-cli/pkg/ops"
@@ -33,15 +32,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case channelsLoadedMsg:
 		m.channels = msg.channels
-		items := make([]list.Item, len(msg.channels))
-		for i, ch := range msg.channels {
-			items[i] = channelItem{ch}
-		}
+		items := buildListItems(m.channels)
 		cmd := m.list.SetItems(items)
 		cmds = append(cmds, cmd)
-		if len(m.channels) > 0 {
-			m.list.Select(0)
-			cmds = append(cmds, loadMessages(m.client, m.channels[0].ID))
+		// Select first actual channel (skip section header)
+		m.list.Select(1)
+		if ch := m.selectedChannel(); ch != nil {
+			cmds = append(cmds, loadMessages(m.client, ch.ID))
 			// Start WebSocket
 			ctx, cancel := context.WithCancel(context.Background())
 			m.wsCancel = cancel
@@ -140,12 +137,14 @@ func (m Model) handleSidebarKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "enter":
 		if ch := m.selectedChannel(); ch != nil {
-			// Reset unread in the channel list
-			idx := m.list.Index()
-			if idx >= 0 && idx < len(m.channels) {
-				m.channels[idx].Unread = 0
-				m.channels[idx].Mentions = 0
-				m.updateListItem(idx)
+			// Reset unread in the source data and list
+			for i := range m.channels {
+				if m.channels[i].ID == ch.ID {
+					m.channels[i].Unread = 0
+					m.channels[i].Mentions = 0
+					m.updateChannelInList(m.channels[i])
+					break
+				}
 			}
 			return m, loadMessages(m.client, ch.ID)
 		}
@@ -162,6 +161,20 @@ func (m Model) handleSidebarKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Delegate j/k/up/down to the list component
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
+
+	// Skip section headers
+	if _, ok := m.list.SelectedItem().(sectionItem); ok {
+		dir := 1
+		if msg.String() == "k" || msg.String() == "up" {
+			dir = -1
+		}
+		next := m.list.Index() + dir
+		if next >= 0 && next < len(m.list.Items()) {
+			m.list.Select(next)
+		} else {
+			m.list.Select(prevIndex) // stay put
+		}
+	}
 
 	// If selection changed, load messages for new channel
 	if m.list.Index() != prevIndex {
@@ -205,15 +218,19 @@ func (m *Model) handleWSEvent(msg ops.Message) {
 		for i := range m.channels {
 			if m.channels[i].ID == msg.ChannelID {
 				m.channels[i].Unread++
-				m.updateListItem(i)
+				m.updateChannelInList(m.channels[i])
 				break
 			}
 		}
 	}
 }
 
-func (m *Model) updateListItem(idx int) {
-	if idx >= 0 && idx < len(m.channels) {
-		m.list.SetItem(idx, channelItem{m.channels[idx]})
+// updateChannelInList finds the channel in the list items and updates it.
+func (m *Model) updateChannelInList(ch ops.Channel) {
+	for i, item := range m.list.Items() {
+		if ci, ok := item.(channelItem); ok && ci.channel.ID == ch.ID {
+			m.list.SetItem(i, channelItem{ch})
+			return
+		}
 	}
 }

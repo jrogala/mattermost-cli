@@ -42,17 +42,18 @@ func ListChannels(c *client.Client, opts ListOptions) ([]Channel, error) {
 		return nil, err
 	}
 
+	members, err := c.GetChannelMembers(teamID)
+	if err != nil {
+		return nil, err
+	}
+	mutedSet := make(map[string]bool, len(members))
+	for _, m := range members {
+		if m.IsMuted() {
+			mutedSet[m.ChannelID] = true
+		}
+	}
+
 	if !opts.IncludeMuted {
-		members, err := c.GetChannelMembers(teamID)
-		if err != nil {
-			return nil, err
-		}
-		mutedSet := make(map[string]bool, len(members))
-		for _, m := range members {
-			if m.IsMuted() {
-				mutedSet[m.ChannelID] = true
-			}
-		}
 		var filtered []client.Channel
 		for _, ch := range channels {
 			if !mutedSet[ch.ID] {
@@ -80,6 +81,7 @@ func ListChannels(c *client.Client, opts ListOptions) ([]Channel, error) {
 			Name:        ch.Name,
 			DisplayName: ResolveChannelName(c, ch, me.ID),
 			Type:        channelTypeName(ch.Type),
+			Muted:       mutedSet[ch.ID],
 		})
 	}
 	return entries, nil
